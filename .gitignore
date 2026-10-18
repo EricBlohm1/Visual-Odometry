@@ -1,0 +1,15 @@
+# Dataset files; keep the placeholder.
+data/kitti/*
+!data/kitti/.gitkeep
+
+# Python caches and virtual environments.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local development artifacts.
+.pytest_cache/
+.vscode/
+.idea/
+.DS_Store
