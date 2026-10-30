@@ -3,9 +3,8 @@ import numpy as np
 from PIL import Image
 
 
-# Will only use left camera for visual odometry, but can add the one for stereo later.
 class KittiOdometryDataset:
-    def __init__(self, data_path: str, sequence: str):
+    def __init__(self, data_path: str, sequence: str, poses_dir: str | Path | None = None):
         self.root = str(Path(data_path).expanduser())
         self.sequence = sequence
         self.sequence_path = Path(self.root) / "sequences" / self.sequence
@@ -24,6 +23,16 @@ class KittiOdometryDataset:
             raise FileNotFoundError(f"No left images found in {self.left_images}.")
 
 
+        self.right_images = self.sequence_path / "image_1"
+        self.right_images = sorted(
+            self.right_images.glob("*.png"),
+            key=lambda x: int(x.stem)  # Stem removes 0 padding
+        )
+        if not self.right_images:
+            raise FileNotFoundError(f"No right images found in {self.right_images}.")
+
+
+
         # ------ Timestamps -------
         times_path = self.sequence_path / "times.txt"
         self.timestamps = np.loadtxt(times_path)
@@ -32,6 +41,12 @@ class KittiOdometryDataset:
             raise ValueError(
                 f"Number of timestamps ({len(self.timestamps)}) does not match "
                 f"number of left images ({len(self.left_images)})."
+            )
+
+        if len(self.timestamps) != len(self.right_images):
+            raise ValueError(
+                f"Number of timestamps ({len(self.timestamps)}) does not match "
+                f"number of right images ({len(self.right_images)})."
             )
 
 
@@ -49,12 +64,26 @@ class KittiOdometryDataset:
 
 
         #------ Optional Ground Truth Poses -------
-        poses_path = self.sequence_path / "poses.txt"
         self.poses = None
-
+        poses_path = (
+            Path(poses_dir).expanduser() / f"{self.sequence}.txt"
+            if poses_dir is not None
+            else self.sequence_path / "poses.txt"
+        )
         if poses_path.is_file():
-            raw_poses = np.loadtxt(poses_path)
-            self.poses = raw_poses.reshape(-1,3,4) # Each pose i a 3x4 matrix.
+            raw_poses = np.loadtxt(poses_path, ndmin=2)
+            if raw_poses.shape != (len(self.left_images), 12):
+                raise ValueError(
+                    f"Expected {len(self.left_images)} pose rows with 12 values "
+                    f"each, but found shape {raw_poses.shape} in {poses_path}."
+                )
+
+            self.poses = np.repeat(
+                np.eye(4)[None, :, :], len(raw_poses), axis=0
+            )
+            self.poses[:, :3, :4] = raw_poses.reshape(-1, 3, 4)
+        elif poses_dir is not None:
+            raise FileNotFoundError(f"Ground-truth poses not found: {poses_path}")
 
 
     def __len__(self):
@@ -64,3 +93,6 @@ class KittiOdometryDataset:
         with Image.open(self.left_images[index]) as img:
             return np.array(img)
 
+    def get_cam1(self, index: int):
+        with Image.open(self.right_images[index]) as img:
+            return np.array(img)
