@@ -72,6 +72,7 @@ With [`evo`](https://github.com/MichaelGrupp/evo):
 ```bash
 evo_ape kitti results/estimated_trajectories/00_gt.txt results/estimated_trajectories/00.txt --align --plot --plot_mode xz
 evo_rpe kitti results/estimated_trajectories/00_gt.txt results/estimated_trajectories/00.txt --plot --plot_mode xz
+evo_traj kitti results/estimated_trajectories/00_gt.txt results/estimated_trajectories/00.txt --plot --plot_mode xz
 ```
 
 ## Future work
