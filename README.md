@@ -1,56 +1,80 @@
-# Monocular Visual Odometry
+# Stereo Visual Odometry
 
-This repository implements a basic monocular visual-odometry pipeline for the
-KITTI odometry dataset. It detects and matches image features, estimates
-relative motion from consecutive left-camera frames with an essential matrix,
-and accumulates the estimated poses into a trajectory.
+I created this project to learn more about computer vision. It estimates
+visual odometry on KITTI stereo sequences, using SIFT by default (ORB is also
+available). For each rectified stereo pair, it matches features and uses
+their horizontal pixel offset, the pinhole camera model, and the calibrated
+baseline to triangulate metric 3-D points. It then matches features between
+consecutive left images and estimates frame-to-frame motion from 3-D-to-2-D
+correspondences using PnP with RANSAC. Levenberg-Marquardt refines
+the pose using the RANSAC inliers. The PnP transform is inverted and
+accumulated into a camera trajectory.
 
-The current motion estimate is monocular: translation has arbitrary scale, so
-the plotted trajectory is for visual comparison and is not a metric estimate.
-The implementation does not include loop closure or drift correction. Failed
-motion estimates are represented by `NaN` poses in the trajectory; the
-estimator keeps its last successful image as the reference and retries with a
-wider baseline. The plot therefore shows gaps for failed frames.
+This is a stereo VO baseline without loop closure or drift correction. When PnP fails, the last accepted motion is reused, so that pose is a prediction rather than a new visual measurement.
+
+## Results
+
+The animations below show sample runs on KITTI sequences 00 and 01 using SIFT. They are
+sped up and show only portions of each run, not the entire trajectory.
+
+<table>
+  <tr>
+    <td align="center"><strong>Sequence 00</strong></td>
+    <td align="center"><strong>Sequence 01</strong></td>
+  </tr>
+  <tr>
+    <td><img src="gifs/Kitti_sequence_00.gif" alt="Visual odometry run on KITTI sequence 00" width="400"></td>
+    <td><img src="gifs/Kitti_sequence_01.gif" alt="Visual odometry run on KITTI sequence 01" width="400"></td>
+  </tr>
+</table>
 
 ## Setup
 
-Install the Python dependencies from the repository root:
+Install dependencies:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Place the KITTI odometry dataset under `data/kitti/`. This example uses the
-grayscale odometry images and the separately distributed ground-truth poses.
-Ground-truth pose files should be at
-`data/kitti/data_odometry_poses/dataset/poses/<sequence>.txt`; poses are
-available for sequences `00` through `10`.
+Place KITTI grayscale images and odometry poses under `data/kitti/`:
 
-Run the example from the repository root:
+```text
+data/kitti/data_odometry_gray/dataset/sequences/00/
+    calib.txt
+    times.txt
+    image_0/
+    image_1/
+data/kitti/data_odometry_poses/dataset/poses/00.txt
+```
+
+## Run
+
+From the repository root:
 
 ```bash
 python src/main.py
 ```
 
-The example runs sequence `02` using SIFT features and plots the estimated
-trajectory alongside ground truth. The dataset loader reads and checks both
-camera image sequences, timestamps, and calibration, but the current odometry
-algorithm uses only the left-camera (`image_0`) frames.
+Defaults to sequence `00` with SIFT. Choose another sequence or use ORB:
 
-## Modules
+```bash
+python src/main.py --sequence 01 --features orb
+```
 
-- `src/main.py` — example entry point and run configuration.
-- `src/dataset.py` — KITTI image sequences, timestamps, calibration, and
-  optional ground-truth poses.
-- `src/camera.py` — camera-coordinate and calibration notes.
-- `src/features.py` — feature detection, descriptors, and matching.
-- `src/motion.py` — essential-matrix estimation and relative-pose recovery.
-- `src/odometry.py` — monocular motion estimation and trajectory accumulation.
-- `src/visualize.py` — trajectory plotting.
+The program displays the estimated trajectory and saves estimated and
+ground-truth poses to `results/estimated_trajectories/`. Failed PnP estimates
+reuse the last accepted motion.
 
-The example uses SIFT. Change `feature_type="sift"` to `feature_type="orb"` in
-`src/main.py` to use ORB instead. Descriptor matching selects L2 distance for
-SIFT and Hamming distance for ORB.
+## Evaluate
 
-The trajectory plot is a visual comparison only. It does not compute ATE or
-RPE metrics or align monocular scale to ground truth.
+With [`evo`](https://github.com/MichaelGrupp/evo):
+
+```bash
+evo_ape kitti results/estimated_trajectories/00_gt.txt results/estimated_trajectories/00.txt --align --plot --plot_mode xz
+evo_rpe kitti results/estimated_trajectories/00_gt.txt results/estimated_trajectories/00.txt --plot --plot_mode xz
+```
+
+## Future work
+
+Local bundle adjustment could reduce local drift, and loop closure could
+correct drift when revisiting a location. Sensor fusion is another possible extension which may yield better accuracy, but it would involve creating e.g EKF and integrating LiDAR or IMU data, which serves better in a new project repo.

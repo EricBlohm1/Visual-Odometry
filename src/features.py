@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def create_detector(feature_type="orb", nfeatures=2000):
+def create_detector(feature_type, nfeatures):
     feature_type = feature_type.lower()
     if feature_type == "orb":
         return cv2.ORB_create(nfeatures=nfeatures)
@@ -17,7 +17,6 @@ def create_detector(feature_type="orb", nfeatures=2000):
 def get_features(img, detector):
     keypoints, descriptors = detector.detectAndCompute(img, None)
     return keypoints, descriptors
-
 
 
 def match_features(des1, des2):

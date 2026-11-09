@@ -13,3 +13,9 @@ venv/
 .vscode/
 .idea/
 .DS_Store
+
+insights.txt
+
+results/
+
+/STEREO_VO_STUDY_GUIDE.md
