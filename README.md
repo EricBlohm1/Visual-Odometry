@@ -6,8 +6,7 @@ available). For each rectified stereo pair, it matches features and uses
 their horizontal pixel offset, the pinhole camera model, and the calibrated
 baseline to triangulate metric 3-D points. It then matches features between
 consecutive left images and estimates frame-to-frame motion from 3-D-to-2-D
-correspondences using PnP with RANSAC. Levenberg-Marquardt refines
-the pose using the RANSAC inliers. The PnP transform is inverted and
+correspondences using PnP with RANSAC. The pose is refined by minimizing reprojection error over the RANSAC inliers. The PnP transform is inverted and
 accumulated into a camera trajectory.
 
 This is a stereo VO baseline without loop closure or drift correction. When PnP fails, the last accepted motion is reused, so that pose is a prediction rather than a new visual measurement.
